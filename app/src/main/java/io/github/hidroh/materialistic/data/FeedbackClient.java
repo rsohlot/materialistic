@@ -52,6 +52,12 @@ public interface FeedbackClient {
 
         @Override
         public void send(String title, String body, final Callback callback) {
+            // Security: Don't attempt API call if token is not configured
+            if (BuildConfig.GITHUB_TOKEN.isEmpty()) {
+                callback.onSent(false);
+                return;
+            }
+            
             body = String.format("%s\nDevice: %s %s, SDK: %s, app version: %s",
                     body,
                     Build.MANUFACTURER,

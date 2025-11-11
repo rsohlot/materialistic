@@ -249,11 +249,18 @@ class FavoriteManager @Inject constructor(
 
   private fun notifyExportDone(context: Context, uri: Uri?) {
     val manager = NotificationManagerCompat.from(context)
-    with(manager) {
-      cancel(notificationId)
-      if (uri == null) return
-      context.grantUriPermission(context.packageName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-      notify(
+    manager.cancel(notificationId)
+    
+    if (uri == null) return
+    
+    // Open share dialog directly (works without notification permission)
+    context.grantUriPermission(context.packageName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    val shareIntent = uri.toSendIntentChooser(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(shareIntent)
+    
+    // Also try to show notification (requires POST_NOTIFICATIONS on Android 13+)
+    try {
+      manager.notify(
         notificationId, createNotificationBuilder(context)
           .setPriority(NotificationCompat.PRIORITY_HIGH)
           .setVibrate(longArrayOf(0L))
@@ -261,7 +268,7 @@ class FavoriteManager @Inject constructor(
           .setContentIntent(
             PendingIntent.getActivity(
               context, 0,
-              uri.toSendIntentChooser(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+              shareIntent,
               when {
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 else -> PendingIntent.FLAG_UPDATE_CURRENT
@@ -270,6 +277,8 @@ class FavoriteManager @Inject constructor(
           )
           .build()
       )
+    } catch (e: SecurityException) {
+      // Notification permission not granted on Android 13+, but share dialog already opened
     }
   }
 

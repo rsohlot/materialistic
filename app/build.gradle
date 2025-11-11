@@ -14,6 +14,24 @@ android {
         buildConfigField "int", "LATEST_RELEASE", "77"
         buildConfigField "String", "GITHUB_TOKEN", "\"\""
         buildConfigField "String", "MERCURY_TOKEN", "\"\""
+        
+        // Disable Room schema verification to avoid permission issues
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += [
+                    "room.schemaLocation": "$projectDir/schemas".toString(),
+                    "room.incremental": "true",
+                    "room.expandProjection": "true"
+                ]
+            }
+        }
+        
+        kapt {
+            arguments {
+                arg("room.schemaLocation", "$projectDir/schemas")
+                arg("room.incremental", "true")
+            }
+        }
         proguardFiles getDefaultProguardFile('proguard-android.txt'),
                 'proguard-rules.pro',
                 'proguard-square.pro',

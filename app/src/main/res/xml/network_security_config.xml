@@ -16,11 +16,16 @@
   -->
 
 <network-security-config xmlns:tools="http://schemas.android.com/tools">
-    <base-config
-        cleartextTrafficPermitted="true"
-        tools:ignore="InsecureBaseConfiguration">
+    <!-- Security: Only allow HTTPS connections by default -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    
+    <!-- If you need to allow HTTP for specific domains, add them here:
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">example.com</domain>
+    </domain-config>
+    -->
 </network-security-config>

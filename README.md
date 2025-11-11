@@ -1,7 +1,15 @@
-## Materialistic for Hacker News
+## Materialistic for Hacker News (Maintained Fork)
+
+> **Note**: This is a maintained fork of the [original Materialistic app](https://github.com/hidroh/materialistic). The original app is no longer available on the Play Store and appears to be unmaintained.
+
 Material design [Hacker News] client for Android, uses official [HackerNews/API], [Dagger] for dependency injection.
 
-[![Get it on Google Play][Play Store Badge]][Play Store]
+### What's Different in This Fork
+- ✅ **Security hardening**: HTTPS enforced by default, no cleartext traffic
+- ✅ **No telemetry/tracking**: Confirmed zero analytics or data collection
+- ✅ **Ad blocking included**: Built-in ad/tracker blocklist
+- 🔧 **Active maintenance**: Security updates and bug fixes
+- 📦 **Self-hosted/sideload ready**: No Play Store dependency
 
 ### Setup
 **Requirements**

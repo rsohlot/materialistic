@@ -81,7 +81,11 @@ public interface ReadabilityClient {
             Observable.defer(() -> fromCache(itemId))
                     .subscribeOn(mIoScheduler)
                     .flatMap(content -> content != null ?
-                            Observable.just(content) : fromNetwork(itemId, url))
+                            Observable.just(content) : 
+                            // Security: Don't attempt API call if token is not configured
+                            BuildConfig.MERCURY_TOKEN.isEmpty() ? 
+                                    Observable.just((String) null) : 
+                                    fromNetwork(itemId, url))
                     .map(content -> AndroidUtils.TextUtils.equals(EMPTY_CONTENT, content) ? null : content)
                     .observeOn(mMainThreadScheduler)
                     .subscribe(callback::onResponse);
@@ -90,6 +94,11 @@ public interface ReadabilityClient {
         @WorkerThread
         @Override
         public void parse(String itemId, String url) {
+            // Security: Don't attempt API call if token is not configured
+            if (BuildConfig.MERCURY_TOKEN.isEmpty()) {
+                return;
+            }
+            
             Observable.defer(() -> fromCache(itemId))
                     .subscribeOn(Schedulers.immediate())
                     .switchIfEmpty(fromNetwork(itemId, url))
