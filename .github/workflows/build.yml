@@ -42,5 +42,8 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: lint-report-${{ github.sha }}
-        path: app/build/reports/lint-results*.html
+        path: |
+          app/build/reports/lint*.html
+          app/build/reports/lint*.xml
+        if-no-files-found: ignore
       if: always()
