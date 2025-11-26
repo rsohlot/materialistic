@@ -46,7 +46,7 @@ public class IconButton extends AppCompatImageButton {
 
     public IconButton(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        setBackgroundResource(AppUtils.getThemedResId(context, R.attr.selectableItemBackgroundBorderless));
+        setBackgroundResource(AppUtils.getThemedResId(context, android.R.attr.selectableItemBackgroundBorderless));
         TypedArray ta = context.getTheme().obtainStyledAttributes(attrs, R.styleable.IconButton, 0, 0);
         int colorDisabled = ContextCompat.getColor(context,
                 AppUtils.getThemedResId(context, android.R.attr.textColorSecondary));

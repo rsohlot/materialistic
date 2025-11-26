@@ -20,7 +20,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.database.CursorWrapper
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import androidx.annotation.AnyThread
@@ -276,7 +275,6 @@ class FavoriteManager @Inject constructor(
   private fun createNotificationBuilder(context: Context) =
       NotificationCompat.Builder(context, CHANNEL_EXPORT)
           .setChannel(context, CHANNEL_EXPORT, context.getString(R.string.export_saved_stories))
-          .setLargeIcon(BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher))
           .setSmallIcon(R.drawable.ic_notification)
           .setContentTitle(context.getString(R.string.export_saved_stories))
           .setAutoCancel(true)

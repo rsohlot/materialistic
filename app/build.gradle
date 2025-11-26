@@ -5,6 +5,10 @@ apply plugin: 'kotlin-kapt'
 android {
     compileSdk 33
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId "io.github.hidroh.materialistic"
         minSdkVersion 21
@@ -52,6 +56,19 @@ android {
 
 }
 
+kapt {
+    javacOptions {
+        option("--add-opens", "jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED")
+        option("--add-opens", "jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED")
+        option("--add-opens", "jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED")
+        option("--add-opens", "jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED")
+        option("--add-opens", "jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED")
+        option("--add-opens", "jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED")
+        option("--add-opens", "jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED")
+        option("--add-opens", "jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED")
+    }
+}
+
 ext {
     okHttpVersion = '3.9.1'
     daggerVersion = '1.2.5'
@@ -79,7 +96,7 @@ dependencies {
             "androidx.room:room-runtime:$roomVersion",
             "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycleVersion",
             "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycleVersion",
-            "androidx.lifecycle:lifecycle-compiler:$lifecycleVersion"
+            "androidx.lifecycle:lifecycle-compiler:$lifecycleVersion",
             "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
     kapt "androidx.room:room-compiler:$roomVersion",
