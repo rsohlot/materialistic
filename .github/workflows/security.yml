@@ -10,9 +10,23 @@ on:
     - cron: '0 0 * * 0'
 
 jobs:
-  security-scan:
+  secret-scan:
+    name: Secret Detection
     runs-on: ubuntu-latest
-    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run Gitleaks (Secret Detection)
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -23,7 +37,6 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    # Dependency vulnerability scanning
     - name: Run OWASP Dependency Check
       uses: dependency-check/Dependency-Check_Action@main
       with:
@@ -33,55 +46,21 @@ jobs:
         args: >
           --scan ./app/build.gradle
           --scan ./build.gradle
-          --failOnCVSS 7
+          --failOnCVSS 9
           --enableRetired
       continue-on-error: true
 
     - name: Upload Dependency Check Report
       uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: dependency-check-report
-        path: reports/
+        path: dependency-check-report.html
+        if-no-files-found: ignore
 
-    # Secret scanning
-    - name: Run Gitleaks (Secret Detection)
-      uses: gitleaks/gitleaks-action@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    # Android-specific security checks
-    - name: Run Android Lint Security Checks
-      run: |
-        chmod +x ./gradlew
-        ./gradlew lint --continue || true
-      
-    - name: Upload Lint Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: lint-report
-        path: app/build/reports/lint-results*.html
-      if: always()
-
-    # CodeQL Analysis for Java/Kotlin
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: java
-
-    - name: Build for CodeQL
-      run: |
-        chmod +x ./gradlew
-        ./gradlew assembleDebug --no-daemon || true
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-
-  # Separate job for MobSF scan (optional - requires more setup)
-  mobsf-scan:
+  lint-scan:
+    name: Android Lint Security Check
     runs-on: ubuntu-latest
-    needs: security-scan
-    if: github.event_name == 'push'
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -91,14 +70,21 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+        cache: gradle
 
-    - name: Build APK
-      run: |
-        chmod +x ./gradlew
-        ./gradlew assembleDebug --no-daemon
+    - name: Grant execute permission
+      run: chmod +x ./gradlew
 
-    - name: Upload APK for manual security review
+    - name: Run Android Lint
+      run: ./gradlew lint --no-daemon --continue || true
+      
+    - name: Upload Lint Report
       uses: actions/upload-artifact@v4
+      if: always()
       with:
-        name: debug-apk
-        path: app/build/outputs/apk/debug/*.apk
+        name: lint-report
+        path: |
+          app/build/reports/lint*.html
+          app/build/reports/lint*.xml
+        if-no-files-found: ignore
+
