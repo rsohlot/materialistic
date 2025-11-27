@@ -1,0 +1,247 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ '**' ]  # All branches
+  pull_request:
+    branches: [ '**' ]  # All branches
+  schedule:
+    # Run weekly on Sundays
+    - cron: '0 0 * * 0'
+
+jobs:
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run Gitleaks (Secret Detection)
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  custom-secret-scan:
+    name: Custom Secret Patterns
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Scan for AWS Keys
+      run: |
+        echo "🔍 Scanning for AWS keys..."
+        if grep -rE '(AKIA|ASIA)[A-Z0-9]{16}' --include="*.java" --include="*.kt" --include="*.xml" --include="*.properties" . 2>/dev/null | grep -v ".git" | grep -v "build/"; then
+          echo "❌ AWS key found!"
+          exit 1
+        fi
+        echo "✓ No AWS keys found"
+
+    - name: Scan for Private Keys
+      run: |
+        echo "🔍 Scanning for private keys..."
+        if grep -rE 'BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY' . 2>/dev/null | grep -v ".git" | grep -v "build/"; then
+          echo "❌ Private key found!"
+          exit 1
+        fi
+        echo "✓ No private keys found"
+
+    - name: Scan for Google API Keys
+      run: |
+        echo "🔍 Scanning for Google API keys..."
+        if grep -rE 'AIza[0-9A-Za-z\-_]{35}' --include="*.java" --include="*.kt" --include="*.xml" . 2>/dev/null | grep -v ".git" | grep -v "build/"; then
+          echo "❌ Google API key found!"
+          exit 1
+        fi
+        echo "✓ No Google API keys found"
+
+    - name: Scan for JWT Tokens
+      run: |
+        echo "🔍 Scanning for JWT tokens..."
+        if grep -rE 'eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*' --include="*.java" --include="*.kt" --include="*.xml" --include="*.json" . 2>/dev/null | grep -v ".git" | grep -v "build/"; then
+          echo "❌ JWT token found!"
+          exit 1
+        fi
+        echo "✓ No JWT tokens found"
+
+    - name: Scan for GitHub Tokens
+      run: |
+        echo "🔍 Scanning for GitHub tokens..."
+        if grep -rE '(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}' --include="*.java" --include="*.kt" --include="*.xml" --include="*.properties" . 2>/dev/null | grep -v ".git" | grep -v "build/"; then
+          echo "❌ GitHub token found!"
+          exit 1
+        fi
+        echo "✓ No GitHub tokens found"
+
+    - name: Scan for Database Connection Strings
+      run: |
+        echo "🔍 Scanning for database connection strings..."
+        if grep -riE '(mongodb|mysql|postgresql|postgres|redis|jdbc)://[^/\s]+:[^@\s]+@' --include="*.java" --include="*.kt" --include="*.xml" --include="*.properties" . 2>/dev/null | grep -v ".git" | grep -v "build/"; then
+          echo "❌ Database connection string with credentials found!"
+          exit 1
+        fi
+        echo "✓ No database connection strings found"
+
+    - name: Scan for Slack/Discord Webhooks
+      run: |
+        echo "🔍 Scanning for webhooks..."
+        if grep -rE 'https://(hooks\.slack\.com/services|discord(app)?\.com/api/webhooks)' --include="*.java" --include="*.kt" --include="*.xml" --include="*.properties" . 2>/dev/null | grep -v ".git" | grep -v "build/"; then
+          echo "❌ Webhook URL found!"
+          exit 1
+        fi
+        echo "✓ No webhooks found"
+
+  hardcoded-secrets-scan:
+    name: Hardcoded Secrets Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Scan for hardcoded passwords/secrets
+      run: |
+        echo "🔍 Scanning for hardcoded secrets..."
+        PATTERN='(password|secret|api_key|apikey|access_key|auth_token|private_key|client_secret)\s*[:=]\s*["\x27][^"\x27]{8,}'
+        if grep -riE "$PATTERN" --include="*.java" --include="*.kt" --include="*.xml" --include="*.properties" --include="*.gradle" . 2>/dev/null | grep -v ".git" | grep -v "build/" | grep -v "test/"; then
+          echo "❌ Potential hardcoded secret found!"
+          exit 1
+        fi
+        echo "✓ No hardcoded secrets found"
+
+  local-path-scan:
+    name: Local Path Detection
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Scan for local Unix paths
+      run: |
+        echo "🔍 Scanning for local Unix paths (/Users/, /home/)..."
+        if grep -rE '(/Users/[a-zA-Z0-9_-]+/|/home/[a-zA-Z0-9_-]+/)' --include="*.java" --include="*.kt" --include="*.xml" --include="*.properties" --include="*.gradle" . 2>/dev/null | grep -v ".git" | grep -v "build/"; then
+          echo "❌ Local Unix path found!"
+          exit 1
+        fi
+        echo "✓ No local Unix paths found"
+
+    - name: Scan for local Windows paths
+      run: |
+        echo "🔍 Scanning for local Windows paths..."
+        if grep -rE '[A-Za-z]:\\(Users|Documents|Desktop|Downloads)\\' --include="*.java" --include="*.kt" --include="*.xml" --include="*.properties" --include="*.gradle" . 2>/dev/null | grep -v ".git" | grep -v "build/"; then
+          echo "❌ Local Windows path found!"
+          exit 1
+        fi
+        echo "✓ No local Windows paths found"
+
+  env-file-scan:
+    name: Environment File Detection
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Scan for .env files
+      run: |
+        echo "🔍 Scanning for .env files..."
+        if find . -name ".env*" -not -path "./.git/*" -not -path "./build/*" | grep -q .; then
+          echo "❌ .env file found!"
+          find . -name ".env*" -not -path "./.git/*" -not -path "./build/*"
+          exit 1
+        fi
+        echo "✓ No .env files found"
+
+  internal-ip-scan:
+    name: Internal IP Detection
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Scan for internal IP addresses
+      run: |
+        echo "🔍 Scanning for internal IP addresses..."
+        if grep -rE '(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3})' --include="*.java" --include="*.kt" --include="*.xml" --include="*.properties" . 2>/dev/null | grep -v ".git" | grep -v "build/" | grep -v "gradle"; then
+          echo "❌ Internal IP address found!"
+          exit 1
+        fi
+        echo "✓ No internal IP addresses found"
+
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'materialistic'
+        path: '.'
+        format: 'HTML'
+        args: >
+          --scan ./app/build.gradle
+          --scan ./build.gradle
+          --failOnCVSS 9
+          --enableRetired
+      continue-on-error: true
+
+    - name: Upload Dependency Check Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: dependency-check-report
+        path: dependency-check-report.html
+        if-no-files-found: ignore
+
+  lint-scan:
+    name: Android Lint Security Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission
+      run: chmod +x ./gradlew
+
+    - name: Run Android Lint
+      run: ./gradlew lint --no-daemon --continue || true
+      
+    - name: Upload Lint Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: lint-report
+        path: |
+          app/build/reports/lint*.html
+          app/build/reports/lint*.xml
+        if-no-files-found: ignore
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [secret-scan, custom-secret-scan, hardcoded-secrets-scan, local-path-scan, env-file-scan, internal-ip-scan, dependency-scan, lint-scan]
+    if: always()
+    steps:
+    - name: Check results
+      run: |
+        echo "🔒 Security Scan Summary"
+        echo "========================"
+        echo "All security scans completed. Check individual job results above."
+

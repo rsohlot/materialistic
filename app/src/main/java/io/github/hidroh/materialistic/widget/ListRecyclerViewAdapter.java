@@ -112,8 +112,8 @@ public abstract class ListRecyclerViewAdapter
         mCustomTabsDelegate.mayLaunchUrl(Uri.parse(item.getUrl()), null, null);
         holder.bind(item,
                 mHotThreshold,
-                mCardViewEnabled,
                 isSelected(item.getId()),
+                mCardViewEnabled,
                 v -> handleItemClick(item, holder),
                 v -> openItem(item));
         bindItem(holder, position);

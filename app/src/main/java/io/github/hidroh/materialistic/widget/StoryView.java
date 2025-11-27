@@ -96,7 +96,7 @@ public class StoryView extends RelativeLayout implements Checkable {
         mPromotedColorResId = ContextCompat.getColor(context, R.color.greenA700);
         mHotColorResId = ContextCompat.getColor(context, R.color.orange500);
         mAccentColorResId = ContextCompat.getColor(getContext(),
-                AppUtils.getThemedResId(getContext(), R.attr.colorAccent));
+                AppUtils.getThemedResId(getContext(), android.R.attr.colorAccent));
         mCommentDrawable = DrawableCompat.wrap(ContextCompat.getDrawable(context,
                 R.drawable.ic_comment_white_24dp).mutate());
         DrawableCompat.setTint(mCommentDrawable, mAccentColorResId);
@@ -116,7 +116,7 @@ public class StoryView extends RelativeLayout implements Checkable {
         // replace with bounded ripple as unbounded ripple requires container bg
         // http://b.android.com/155880
         mMoreButton.setBackgroundResource(AppUtils.getThemedResId(context,
-                R.attr.selectableItemBackground));
+                android.R.attr.selectableItemBackground));
         ta.recycle();
         a.recycle();
     }

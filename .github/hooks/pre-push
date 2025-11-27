@@ -1,0 +1,231 @@
+#!/bin/bash
+
+# Pre-push hook for comprehensive security checks
+# To install: cp .github/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+
+echo "🔒 Running comprehensive security checks before push..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+ERRORS=0
+WARNINGS=0
+
+# File types to scan
+FILE_TYPES="--include=*.java --include=*.kt --include=*.xml --include=*.properties --include=*.gradle --include=*.json --include=*.yml --include=*.yaml"
+
+# === CRITICAL CHECKS (Block Push) ===
+echo -e "\n${BLUE}[CRITICAL CHECKS]${NC}"
+
+# 1. Hardcoded secrets/API keys
+echo -n "Checking for hardcoded secrets... "
+SECRETS_PATTERN='(password|secret|api_key|apikey|access_key|auth_token|private_key|credentials|client_secret)\s*[:=]\s*["\x27][^"\x27]{8,}'
+if grep -riE "$SECRETS_PATTERN" $FILE_TYPES . 2>/dev/null | grep -v "Binary" | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED${NC}"
+    grep -riE "$SECRETS_PATTERN" $FILE_TYPES . 2>/dev/null | grep -v "Binary" | grep -v ".git" | grep -v "build/" | head -3
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 2. AWS Access Keys
+echo -n "Checking for AWS keys... "
+if grep -rE '(AKIA|ASIA)[A-Z0-9]{16}' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - AWS access key detected${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 3. AWS Secret Keys
+echo -n "Checking for AWS secret keys... "
+if grep -rE '["\x27][A-Za-z0-9/+=]{40}["\x27]' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" | grep -iE "(aws|secret|key)" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Potential AWS secret key${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 4. Private Keys (RSA, DSA, EC, SSH)
+echo -n "Checking for private keys... "
+if grep -rE 'BEGIN (RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY' . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Private key detected${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 5. Google API Keys
+echo -n "Checking for Google API keys... "
+if grep -rE 'AIza[0-9A-Za-z\-_]{35}' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Google API key detected${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 6. Firebase Keys
+echo -n "Checking for Firebase keys... "
+if grep -rE 'AAAA[A-Za-z0-9_-]{7}:[A-Za-z0-9_-]{140}' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Firebase key detected${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 7. JWT Tokens
+echo -n "Checking for JWT tokens... "
+if grep -rE 'eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - JWT token detected${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 8. Slack Webhooks
+echo -n "Checking for Slack webhooks... "
+if grep -rE 'https://hooks\.slack\.com/services/T[A-Z0-9]{8}/B[A-Z0-9]{8}/[A-Za-z0-9]{24}' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Slack webhook detected${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 9. Discord Webhooks
+echo -n "Checking for Discord webhooks... "
+if grep -rE 'https://discord(app)?\.com/api/webhooks/[0-9]+/[A-Za-z0-9_-]+' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Discord webhook detected${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 10. Database Connection Strings
+echo -n "Checking for database connection strings... "
+if grep -riE '(mongodb|mysql|postgresql|postgres|redis|jdbc)://[^/\s]+:[^@\s]+@' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Database connection string with credentials${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 11. GitHub Tokens
+echo -n "Checking for GitHub tokens... "
+if grep -rE '(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - GitHub token detected${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 12. Generic Bearer Tokens
+echo -n "Checking for bearer tokens... "
+if grep -riE 'bearer\s+[A-Za-z0-9_\-\.]{20,}' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Bearer token detected${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 13. .env files (CRITICAL)
+echo -n "Checking for .env files... "
+if find . -name ".env*" -not -path "./.git/*" -not -path "./build/*" 2>/dev/null | grep -q .; then
+    echo -e "${RED}❌ FAILED - .env file detected${NC}"
+    find . -name ".env*" -not -path "./.git/*" -not -path "./build/*" 2>/dev/null | head -3
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 14. Hardcoded IPs (Internal) - CRITICAL
+echo -n "Checking for internal IP addresses... "
+if grep -rE '(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3})' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" | grep -v "gradle" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Internal IP address detected${NC}"
+    grep -rE '(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3})' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" | grep -v "gradle" | head -3
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# === WARNING CHECKS (Don't Block, Just Warn) ===
+echo -e "\n${BLUE}[WARNING CHECKS]${NC}"
+
+# 15. TODO/FIXME Security
+echo -n "Checking for security TODOs... "
+if grep -riE '(TODO|FIXME|XXX|HACK).*(security|auth|password|credential|secret|vulnerab)' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠ WARNING - Security-related TODO found${NC}"
+    grep -riE '(TODO|FIXME|XXX|HACK).*(security|auth|password|credential|secret|vulnerab)' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" | head -2
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 16. Debug/Test Credentials
+echo -n "Checking for test credentials... "
+if grep -riE '(test_?password|test_?secret|test_?key|demo_?password|dummy_?password)\s*[:=]' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" | grep -v "test/" > /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠ WARNING - Test/demo credentials in non-test code${NC}"
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 17. Sensitive Android permissions
+echo -n "Checking for sensitive permissions... "
+if grep -rE 'android\.permission\.(READ_CONTACTS|READ_CALL_LOG|READ_SMS|CAMERA|RECORD_AUDIO|ACCESS_FINE_LOCATION)' --include="*.xml" . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠ WARNING - Sensitive Android permissions declared${NC}"
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 18. Local file paths (macOS/Linux)
+echo -n "Checking for local file paths (Unix)... "
+if grep -rE '(/Users/[a-zA-Z0-9_-]+/|/home/[a-zA-Z0-9_-]+/)' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" | grep -v ".gradle" | grep -v ".idea" | grep -v "local.properties" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Local Unix path detected${NC}"
+    grep -rE '(/Users/[a-zA-Z0-9_-]+/|/home/[a-zA-Z0-9_-]+/)' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" | grep -v ".gradle" | grep -v ".idea" | grep -v "local.properties" | head -3
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 19. Local file paths (Windows)
+echo -n "Checking for local file paths (Windows)... "
+if grep -rE '[A-Za-z]:\\\\(Users|Documents|Desktop|Downloads)\\\\' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" > /dev/null 2>&1; then
+    echo -e "${RED}❌ FAILED - Local Windows path detected${NC}"
+    grep -rE '[A-Za-z]:\\\\(Users|Documents|Desktop|Downloads)\\\\' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" | head -3
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# 20. Localhost URLs with ports
+echo -n "Checking for localhost URLs... "
+if grep -rE '(localhost|127\.0\.0\.1):[0-9]+' $FILE_TYPES . 2>/dev/null | grep -v ".git" | grep -v "build/" | grep -v "test/" > /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠ WARNING - Localhost URL found (may be intentional for dev)${NC}"
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo -e "${GREEN}✓ Passed${NC}"
+fi
+
+# Summary
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+if [ $ERRORS -gt 0 ]; then
+    echo -e "${RED}❌ SECURITY CHECK FAILED${NC}"
+    echo -e "   ${RED}$ERRORS critical issue(s) found${NC}"
+    [ $WARNINGS -gt 0 ] && echo -e "   ${YELLOW}$WARNINGS warning(s)${NC}"
+    echo ""
+    echo "Push blocked. Please fix the critical issues above."
+    echo "To bypass (not recommended): git push --no-verify"
+    exit 1
+else
+    echo -e "${GREEN}✓ SECURITY CHECK PASSED${NC}"
+    [ $WARNINGS -gt 0 ] && echo -e "   ${YELLOW}$WARNINGS warning(s) (non-blocking)${NC}"
+    echo ""
+    exit 0
+fi

@@ -481,7 +481,7 @@ public class AppUtils {
     public static void setStatusBarDim(Window window, boolean dim) {
         setStatusBarColor(window, dim ? Color.TRANSPARENT :
                 ContextCompat.getColor(window.getContext(),
-                        AppUtils.getThemedResId(window.getContext(), R.attr.colorPrimaryDark)));
+                        AppUtils.getThemedResId(window.getContext(), android.R.attr.colorPrimaryDark)));
     }
 
     public static void setStatusBarColor(Window window, int color) {
@@ -591,7 +591,7 @@ public class AppUtils {
         if (Preferences.customTabsEnabled(context)) {
             CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder(session)
                     .setToolbarColor(ContextCompat.getColor(context,
-                            AppUtils.getThemedResId(context, R.attr.colorPrimary)))
+                            AppUtils.getThemedResId(context, android.R.attr.colorPrimary)))
                     .setShowTitle(true)
                     .enableUrlBarHiding()
                     .addDefaultShareMenuItem();

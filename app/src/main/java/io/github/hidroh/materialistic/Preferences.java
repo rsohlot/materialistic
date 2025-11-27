@@ -417,7 +417,7 @@ public class Preferences {
                 context.getTheme().applyStyle(themeSpec.themeOverrides, true);
             }
             if (dialogTheme) {
-                context.setTheme(AppUtils.getThemedResId(context, R.attr.alertDialogTheme));
+                context.setTheme(AppUtils.getThemedResId(context, android.R.attr.alertDialogTheme));
             }
         }
 

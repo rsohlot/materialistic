@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# Pre-commit hook for security checks
+# To install: cp .github/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+echo "🔒 Running security checks..."
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+ERRORS=0
+
+# Check for hardcoded secrets/API keys
+echo "Checking for hardcoded secrets..."
+SECRETS_PATTERN='(password|secret|api_key|apikey|token|private_key|credentials)\s*=\s*["\x27][^"\x27]+'
+if git diff --cached --diff-filter=ACMR | grep -iE "$SECRETS_PATTERN" > /dev/null 2>&1; then
+    echo -e "${RED}❌ Potential hardcoded secrets detected!${NC}"
+    git diff --cached --diff-filter=ACMR | grep -iE "$SECRETS_PATTERN"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ No hardcoded secrets found${NC}"
+fi
+
+# Check for AWS keys
+echo "Checking for AWS keys..."
+if git diff --cached --diff-filter=ACMR | grep -E '(AKIA|ASIA)[A-Z0-9]{16}' > /dev/null 2>&1; then
+    echo -e "${RED}❌ Potential AWS access key detected!${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ No AWS keys found${NC}"
+fi
+
+# Check for private keys
+echo "Checking for private keys..."
+if git diff --cached --diff-filter=ACMR | grep -E 'BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY' > /dev/null 2>&1; then
+    echo -e "${RED}❌ Private key detected!${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ No private keys found${NC}"
+fi
+
+# Check for Google API keys
+echo "Checking for Google API keys..."
+if git diff --cached --diff-filter=ACMR | grep -E 'AIza[0-9A-Za-z\\-_]{35}' > /dev/null 2>&1; then
+    echo -e "${RED}❌ Potential Google API key detected!${NC}"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ No Google API keys found${NC}"
+fi
+
+# Check for Firebase keys
+echo "Checking for Firebase keys..."
+if git diff --cached --diff-filter=ACMR | grep -E 'firebase.*\.json' > /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠ Firebase config file detected - ensure it's meant to be public${NC}"
+fi
+
+# Check for debug/logging statements in production code
+echo "Checking for debug statements..."
+if git diff --cached --diff-filter=ACMR -- '*.java' '*.kt' | grep -E '(System\.out\.print|Log\.(d|v)\()' > /dev/null 2>&1; then
+    echo -e "${YELLOW}⚠ Debug logging statements detected (consider removing for production)${NC}"
+fi
+
+# Summary
+echo ""
+if [ $ERRORS -gt 0 ]; then
+    echo -e "${RED}❌ Security check failed with $ERRORS error(s)${NC}"
+    echo "Please fix the issues above before committing."
+    echo "To bypass (not recommended): git commit --no-verify"
+    exit 1
+else
+    echo -e "${GREEN}✓ All security checks passed${NC}"
+    exit 0
+fi
