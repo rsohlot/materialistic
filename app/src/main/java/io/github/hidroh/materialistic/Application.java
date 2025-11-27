@@ -44,7 +44,7 @@ public class Application extends android.app.Application implements Injectable {
         if (BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
                     .detectAll()
-                    .penaltyFlashScreen()
+                    .penaltyLog()
                     .build());
             StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
                     .detectAll()
