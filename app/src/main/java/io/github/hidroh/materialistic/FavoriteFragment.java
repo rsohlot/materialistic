@@ -20,6 +20,7 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.os.Bundle;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.view.ActionMode;
 import androidx.recyclerview.widget.RecyclerView;
@@ -120,7 +121,7 @@ public class FavoriteFragment extends BaseListFragment
             return true;
         }
         if (item.getItemId() == R.id.menu_export) {
-            mFavoriteManager.export(getActivity(), mFilter);
+            showExportFormatDialog();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -239,5 +240,69 @@ public class FavoriteFragment extends BaseListFragment
                         (dialog, which) -> mFavoriteManager.clear(getActivity(), mFilter))
                 .setNegativeButton(android.R.string.cancel, null)
                 .create().show();
+    }
+
+    private FavoriteManager.ExportFormat mSelectedFormat;
+
+    private void showExportFormatDialog() {
+        String[] formats = {"CSV (Spreadsheet)", "TXT (Plain Text)", "HTML (Web Page)", "Markdown (MD)", "JSON (Data)"};
+        FavoriteManager.ExportFormat[] formatValues = {
+            FavoriteManager.ExportFormat.CSV,
+            FavoriteManager.ExportFormat.TXT,
+            FavoriteManager.ExportFormat.HTML,
+            FavoriteManager.ExportFormat.MARKDOWN,
+            FavoriteManager.ExportFormat.JSON
+        };
+        
+        new AlertDialog.Builder(getActivity())
+                .setTitle("Export Format")
+                .setItems(formats, (dialog, which) -> {
+                    mSelectedFormat = formatValues[which];
+                    showExportLocationDialog();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showExportLocationDialog() {
+        String[] options = {"Save to Downloads (Default)", "Choose Location..."};
+        
+        new AlertDialog.Builder(getActivity())
+                .setTitle("Save Location")
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        // Save to Downloads with default name
+                        mFavoriteManager.export(getActivity(), mFilter, mSelectedFormat);
+                    } else {
+                        // Let user choose location
+                        openFilePicker();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private static final int REQUEST_CODE_SAVE_FILE = 1001;
+
+    private void openFilePicker() {
+        String timestamp = new java.text.SimpleDateFormat("yyyy-MM-dd_HHmm", java.util.Locale.getDefault())
+                .format(new java.util.Date());
+        String defaultFileName = "materialistic-export-" + timestamp + "." + mSelectedFormat.getExtension();
+        
+        android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+        intent.setType(mSelectedFormat.getMimeType());
+        intent.putExtra(android.content.Intent.EXTRA_TITLE, defaultFileName);
+        startActivityForResult(intent, REQUEST_CODE_SAVE_FILE);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_SAVE_FILE && resultCode == android.app.Activity.RESULT_OK) {
+            if (data != null && data.getData() != null) {
+                mFavoriteManager.exportToUri(getActivity(), mFilter, mSelectedFormat, data.getData());
+            }
+        }
     }
 }
